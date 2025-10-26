@@ -1,0 +1,11 @@
+[workspace]
+members = [
+  "programs/fighter_registry",
+  "programs/token_economy",
+  "programs/marketplace"
+]
+
+[programs.localnet]
+fighter_registry = "PROGRAM_ID_PLACEHOLDER"
+token_economy = "PROGRAM_ID_PLACEHOLDER"
+marketplace = "PROGRAM_ID_PLACEHOLDER"
