@@ -16,5 +16,7 @@ pub struct Fighter {
     pub health: u16,             
     pub stamina: u16,            
     pub experience: u32,         
-    pub level: u8,               
+    pub level: u8,    
+    pub tokens : u64,
+    pub bump : u8,           
 }

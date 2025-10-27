@@ -1,15 +1,15 @@
 [package]
-name = "fighter_registry"
+name = "token_economy"
 version = "0.1.0"
 edition = "2021"
-
-
 
 [lib]
 crate-type = ["cdylib", "lib"]
 
 [dependencies]
 anchor-lang = "0.32.1"
+# Anchor SPL for token account types/program
+anchor-spl = "0.32.1"
 # Add any other dependencies you need for your contract
 
 [features]
@@ -22,4 +22,4 @@ codegen-units = 1
 
 [profile.release.build-override]
 opt-level = 3
-incremental = false
+incremental = false   

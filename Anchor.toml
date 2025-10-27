@@ -1,11 +1,10 @@
 [workspace]
 members = [
-  "programs/fighter_registry",
-  "programs/token_economy",
-  "programs/marketplace"
+    "programs/fighter_registry",
+    "programs/token_economy",
+    "programs/marketplace"
 ]
 
-[programs.localnet]
-fighter_registry = "PROGRAM_ID_PLACEHOLDER"
-token_economy = "PROGRAM_ID_PLACEHOLDER"
-marketplace = "PROGRAM_ID_PLACEHOLDER"
+[provider]
+cluster = "devnet"          # or "localnet"
+wallet = "/home/abhi/.config/solana/id.json"  # <<- Change to your Solana wallet path!
