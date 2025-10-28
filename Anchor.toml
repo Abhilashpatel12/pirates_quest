@@ -1,10 +1,24 @@
-[workspace]
-members = [
-    "programs/fighter_registry",
-    "programs/token_economy",
-    "programs/marketplace"
-]
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.devnet]
+nft-items = "CD6ZxwNou2pCCwbUM6ae3e3cw2QTQNrxJ8uHyfcERfZU"
+token_economy ="HtHrPWT8w5tKk4Ex2xjprB9b1bmm96GfcXxpq4aD4oLT"
+fighter_registry ="BkvZpft92ThTiVG7XNDWpdha1432vG2LzdjWijGdb8KQ"
+marketplace = "7itnQ7r2SBogq6wBexxnEyBuUth62sXA1dBYVKeuwcRn"
+
+[registry]
+url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"          # or "localnet"
-wallet = "/home/abhi/.config/solana/id.json"  # <<- Change to your Solana wallet path!
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[workspace]
+members = ["programs/fighter_registry", "programs/token_economy", "programs/marketplace", "programs/nft-items"]
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

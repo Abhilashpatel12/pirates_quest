@@ -4,10 +4,8 @@ pub mod instructions;
 use crate::instructions::*;
 
 pub mod state;
-use crate::state::*;
 
 pub mod errors;
-use crate::errors::*;
 
 declare_id!("BkvZpft92ThTiVG7XNDWpdha1432vG2LzdjWijGdb8KQ");
 

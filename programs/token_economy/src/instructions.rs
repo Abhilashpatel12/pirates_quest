@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount};
+use anchor_spl::token::Token;
 use crate::errors::ErrorCode;
 use crate::state::*;
 
@@ -100,6 +100,7 @@ pub struct MintPirateTokens<'info> {
     pub to_vault: Account<'info, Vault>,
 
     pub authority: Signer<'info>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
     pub mint: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
 }
@@ -117,6 +118,7 @@ pub struct BurnPirateTokens<'info> {
     pub from_vault: Account<'info, Vault>,
 
     pub authority: Signer<'info>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
     pub mint: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
 }
@@ -136,6 +138,7 @@ pub struct TransferPirateTokens<'info> {
     pub to_vault: Account<'info, Vault>,
 
     pub authority: Signer<'info>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
     pub mint: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
 }
@@ -151,6 +154,7 @@ pub struct Reward<'info> {
     #[account(mut)]
     pub from_vault: Account<'info, Vault>,
     pub authority: Signer<'info>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
     pub mint : AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
 }

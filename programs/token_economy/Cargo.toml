@@ -1,25 +1,27 @@
 [package]
-name = "token_economy"
+name = "token-economy"
 version = "0.1.0"
+description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
+name = "token_economy"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
 
 [dependencies]
 anchor-lang = "0.32.1"
-# Anchor SPL for token account types/program
 anchor-spl = "0.32.1"
-# Add any other dependencies you need for your contract
 
-[features]
-no-entrypoint = []
-
-[profile.release]
-overflow-checks = true
-lto = "fat"
-codegen-units = 1
-
-[profile.release.build-override]
-opt-level = 3
-incremental = false   
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

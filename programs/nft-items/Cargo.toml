@@ -1,12 +1,12 @@
 [package]
-name = "marketplace"
+name = "nft-items"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "marketplace"
+name = "nft_items"
 
 [features]
 default = []
@@ -19,9 +19,12 @@ anchor-debug = []
 custom-heap = []
 custom-panic = []
 
+
 [dependencies]
 anchor-lang = "0.32.1"
-anchor-spl = "0.32.1"
+anchor-spl = { version = "0.32.1", features = ["metadata"] }
+mpl-core = { version = "0.11.1", features = ["anchor"] }
+
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
