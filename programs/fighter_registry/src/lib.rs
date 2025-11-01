@@ -7,7 +7,7 @@ pub mod state;
 
 pub mod errors;
 
-declare_id!("BkvZpft92ThTiVG7XNDWpdha1432vG2LzdjWijGdb8KQ");
+declare_id!("8iAqcZnZgfVxSSm8C9UtHadJcSNqvuYaGrQ3XuCnehj7");
 
 #[program]
 pub mod fighter_registry {

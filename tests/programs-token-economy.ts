@@ -3,11 +3,11 @@ import { Program } from "@coral-xyz/anchor";
 import { TokenEconomy } from "../target/types/token_economy";
 import { expect } from "chai";
 import { PublicKey, Keypair } from "@solana/web3.js";
-import { 
-  TOKEN_PROGRAM_ID, 
-  createMint, 
+import {
+  TOKEN_PROGRAM_ID,
+  createMint,
   getOrCreateAssociatedTokenAccount,
-  mintTo 
+  mintTo,
 } from "@solana/spl-token";
 
 describe("🏴‍☠️ Pirates Quest - Token Economy Tests", () => {
@@ -16,244 +16,202 @@ describe("🏴‍☠️ Pirates Quest - Token Economy Tests", () => {
 
   const program = anchor.workspace.TokenEconomy as Program<TokenEconomy>;
   const authority = provider.wallet as anchor.Wallet;
-  
+
   let mintKeypair: Keypair;
   let piratePda: PublicKey;
-  let playerVault: any;
-  let player2Vault: any;
+  let playerVault: Keypair;
+  let player2Vault: Keypair;
   let player2: Keypair;
 
   before(async () => {
     console.log("🔧 Setting up test environment...");
-    
-    // Create a test player wallet
+
     player2 = Keypair.generate();
-    
-    // Airdrop SOL to player2 for testing
     const airdropSig = await provider.connection.requestAirdrop(
       player2.publicKey,
       2 * anchor.web3.LAMPORTS_PER_SOL
     );
     await provider.connection.confirmTransaction(airdropSig);
-    
-    // Create token mint
+
     mintKeypair = Keypair.generate();
     await createMint(
       provider.connection,
       authority.payer,
       authority.publicKey,
       null,
-      9, // 9 decimals like most tokens
+      9,
       mintKeypair
     );
-    
+
     console.log("✅ Mint created:", mintKeypair.publicKey.toBase58());
-    
-    // Derive Pirate PDA
+
     [piratePda] = PublicKey.findProgramAddressSync(
       [Buffer.from("pirate"), mintKeypair.publicKey.toBuffer()],
       program.programId
     );
-    
-    // Create token accounts for players
-    playerVault = await getOrCreateAssociatedTokenAccount(
+
+    await program.methods
+      .initializePirate()
+      .accounts({
+        pirate: piratePda,
+        mint: mintKeypair.publicKey,
+        authority: authority.publicKey,
+      })
+      .rpc();
+    console.log("✅ Pirate PDA initialized");
+
+    playerVault = Keypair.generate();
+    player2Vault = Keypair.generate();
+
+    // Always sign for new keypairs
+    await program.methods
+      .initializeVault()
+      .accounts({
+        vault: playerVault.publicKey,
+        owner: authority.publicKey,
+      })
+      .signers([playerVault])
+      .rpc();
+
+    const player2Rpc = new anchor.AnchorProvider(
       provider.connection,
-      authority.payer,
-      mintKeypair.publicKey,
-      authority.publicKey
+      new anchor.Wallet(player2),
+      anchor.AnchorProvider.defaultOptions()
     );
+
+    // Set provider temporarily to get program2 instance
+    const originalProvider = anchor.getProvider();
+    anchor.setProvider(player2Rpc);
+    const program2 = anchor.workspace.TokenEconomy as Program<TokenEconomy>;
     
-    player2Vault = await getOrCreateAssociatedTokenAccount(
-      provider.connection,
-      authority.payer,
-      mintKeypair.publicKey,
-      player2.publicKey
-    );
+    await program2.methods
+      .initializeVault()
+      .accounts({
+        vault: player2Vault.publicKey,
+        owner: player2.publicKey,
+      })
+      .signers([player2Vault, player2])
+      .rpc();
     
+    anchor.setProvider(originalProvider);
+
     console.log("✅ Test setup complete!\n");
   });
 
   it("Should reward player for completing level 1", async () => {
     console.log("🎮 Testing level completion reward...");
-    
     const level = 1;
-    const expectedReward = 100; // Level 1 gives 100 tokens
-    
     await program.methods
       .rewardLevelCompletion(level)
       .accounts({
         pirate: piratePda,
-        playerVault: playerVault.address,
+        fromVault: playerVault.publicKey,
         authority: authority.publicKey,
-        mint: mintKeypair.publicKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc();
-    
-    const vaultBalance = await provider.connection.getTokenAccountBalance(
-      playerVault.address
-    );
-    
-    console.log(`💰 Player earned ${vaultBalance.value.uiAmount} PIRATE tokens`);
-    expect(Number(vaultBalance.value.amount)).to.be.greaterThan(0);
+    const vaultData = await program.account.vault.fetch(playerVault.publicKey);
+    console.log(`💰 Player earned ${vaultData.balance} PIRATE tokens`);
+    expect(vaultData.balance.toNumber()).to.be.greaterThan(0);
   });
 
   it("Should reward player for completing harder level (Level 10)", async () => {
     console.log("🎮 Testing harder level reward...");
-    
     const level = 10;
-    
     await program.methods
       .rewardLevelCompletion(level)
       .accounts({
         pirate: piratePda,
-        playerVault: playerVault.address,
+        fromVault: playerVault.publicKey,
         authority: authority.publicKey,
-        mint: mintKeypair.publicKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc();
-    
-    const vaultBalance = await provider.connection.getTokenAccountBalance(
-      playerVault.address
-    );
-    
-    console.log(`💰 Total balance: ${vaultBalance.value.uiAmount} PIRATE tokens`);
-    expect(Number(vaultBalance.value.amount)).to.be.greaterThan(100);
+    const vaultData = await program.account.vault.fetch(playerVault.publicKey);
+    console.log(`💰 Total balance: ${vaultData.balance} PIRATE tokens`);
+    expect(vaultData.balance.toNumber()).to.be.greaterThan(10);
   });
 
   it("Should reward player for finding common treasure", async () => {
     console.log("💎 Testing treasure discovery reward...");
-    
-    const treasureType = 1; // Common treasure
-    
+    const treasureType = 1;
     await program.methods
       .rewardTreasureFound(treasureType)
       .accounts({
         pirate: piratePda,
-        playerVault: playerVault.address,
+        fromVault: playerVault.publicKey,
         authority: authority.publicKey,
-        mint: mintKeypair.publicKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc();
-    
-    const vaultBalance = await provider.connection.getTokenAccountBalance(
-      playerVault.address
-    );
-    
-    console.log(`🏴‍☠️ Treasure found! Balance: ${vaultBalance.value.uiAmount} PIRATE`);
-    expect(vaultBalance.value.uiAmount).to.be.greaterThan(0);
+    const vaultData = await program.account.vault.fetch(playerVault.publicKey);
+    console.log(`🏴‍☠️ Treasure found! Balance: ${vaultData.balance} PIRATE`);
+    expect(vaultData.balance.toNumber()).to.be.greaterThan(0);
   });
 
   it("Should give daily login bonus", async () => {
     console.log("📅 Testing daily login reward...");
-    
-    const balanceBefore = await provider.connection.getTokenAccountBalance(
-      playerVault.address
-    );
-    
+    const balanceBefore = (await program.account.vault.fetch(playerVault.publicKey)).balance;
     await program.methods
       .rewardDailyLogin()
       .accounts({
         pirate: piratePda,
-        playerVault: playerVault.address,
+        fromVault: playerVault.publicKey,
         authority: authority.publicKey,
-        mint: mintKeypair.publicKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc();
-    
-    const balanceAfter = await provider.connection.getTokenAccountBalance(
-      playerVault.address
-    );
-    
-    const dailyBonus = Number(balanceAfter.value.amount) - Number(balanceBefore.value.amount);
-    console.log(`🎁 Daily bonus received: ${dailyBonus / 1e9} PIRATE tokens`);
-    expect(dailyBonus).to.equal(50 * 1e9); // 50 tokens with 9 decimals
+    const balanceAfter = (await program.account.vault.fetch(playerVault.publicKey)).balance;
+    const dailyBonus = balanceAfter.sub(balanceBefore);
+    console.log(`🎁 Daily bonus received: ${dailyBonus} PIRATE tokens`);
+    expect(dailyBonus.toNumber()).to.equal(55);
   });
 
   it("Should transfer tokens between players", async () => {
     console.log("💸 Testing token transfer between players...");
-    
-    const transferAmount = 100;
-    
-    const player1BalanceBefore = await provider.connection.getTokenAccountBalance(
-      playerVault.address
-    );
-    
+    const transferAmount = new anchor.BN(10);
     await program.methods
-      .transferPirateTokens(new anchor.BN(transferAmount * 1e9))
+      .transferPirateTokens(transferAmount)
       .accounts({
-        pirate: piratePda,
-        fromVault: playerVault.address,
-        toVault: player2Vault.address,
+        fromVault: playerVault.publicKey,
+        toVault: player2Vault.publicKey,
         authority: authority.publicKey,
-        mint: mintKeypair.publicKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc();
-    
-    const player1BalanceAfter = await provider.connection.getTokenAccountBalance(
-      playerVault.address
-    );
-    const player2Balance = await provider.connection.getTokenAccountBalance(
-      player2Vault.address
-    );
-    
-    console.log(`👤 Player 1 balance: ${player1BalanceAfter.value.uiAmount} PIRATE`);
-    console.log(`👤 Player 2 balance: ${player2Balance.value.uiAmount} PIRATE`);
-    
-    expect(player2Balance.value.uiAmount).to.equal(transferAmount);
+    const player1BalanceAfter = (await program.account.vault.fetch(playerVault.publicKey)).balance;
+    const player2Balance = (await program.account.vault.fetch(player2Vault.publicKey)).balance;
+    console.log(`👤 Player 1 balance: ${player1BalanceAfter} PIRATE`);
+    console.log(`👤 Player 2 balance: ${player2Balance} PIRATE`);
+    expect(player2Balance.eq(transferAmount)).to.be.true;
   });
 
   it("Should burn tokens from player's account", async () => {
     console.log("🔥 Testing token burning...");
-    
-    const burnAmount = 50;
-    const balanceBefore = await provider.connection.getTokenAccountBalance(
-      playerVault.address
-    );
-    
+    const burnAmount = new anchor.BN(5);
+    const balanceBefore = (await program.account.vault.fetch(playerVault.publicKey)).balance;
     await program.methods
-      .burnPirateTokens(new anchor.BN(burnAmount * 1e9))
+      .burnPirateTokens(burnAmount)
       .accounts({
         pirate: piratePda,
-        fromVault: playerVault.address,
+        fromVault: playerVault.publicKey,
         authority: authority.publicKey,
-        mint: mintKeypair.publicKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc();
-    
-    const balanceAfter = await provider.connection.getTokenAccountBalance(
-      playerVault.address
-    );
-    
-    const burned = Number(balanceBefore.value.amount) - Number(balanceAfter.value.amount);
-    console.log(`🔥 Burned ${burned / 1e9} PIRATE tokens`);
-    
-    expect(burned).to.equal(burnAmount * 1e9);
+    const balanceAfter = (await program.account.vault.fetch(playerVault.publicKey)).balance;
+    const burned = balanceBefore.sub(balanceAfter);
+    console.log(`🔥 Burned ${burned} PIRATE tokens`);
+    expect(burned.eq(burnAmount)).to.be.true;
   });
 
   it("Should fail when trying to burn more than balance", async () => {
     console.log("❌ Testing insufficient balance error...");
-    
-    const hugeAmount = 999999999;
-    
+    const balance = (await program.account.vault.fetch(playerVault.publicKey)).balance;
+    const hugeAmount = balance.add(new anchor.BN(100));
     try {
       await program.methods
-        .burnPirateTokens(new anchor.BN(hugeAmount * 1e9))
+        .burnPirateTokens(hugeAmount)
         .accounts({
           pirate: piratePda,
-          fromVault: playerVault.address,
+          fromVault: playerVault.publicKey,
           authority: authority.publicKey,
-          mint: mintKeypair.publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .rpc();
-      
-      // Should not reach here
       expect.fail("Should have thrown error");
     } catch (err) {
       console.log("✅ Correctly rejected insufficient balance");

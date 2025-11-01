@@ -1,5 +1,5 @@
 [package]
-name = "token-economy"
+name = "token_economy"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
@@ -20,8 +20,8 @@ custom-heap = []
 custom-panic = []
 
 [dependencies]
-anchor-lang = "0.32.1"
-anchor-spl = "0.32.1"
+anchor-lang = "0.30.1"
+anchor-spl = "0.30.1"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

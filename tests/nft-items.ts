@@ -134,7 +134,7 @@ describe("Pirates Quest NFT Items", () => {
       expect(gameItem.owner.toString()).to.equal(wallet.publicKey.toString());
       expect(gameItem.rarity).to.equal(rarity);
       expect(gameItem.level).to.equal(1);
-      expect(gameItem.experience.toNumber()).to.equal(0);
+      expect(gameItem.experience).to.equal(0);
       expect(gameItem.stats.attackPower).to.equal(500);
       expect(gameItem.isEquipped).to.be.false;
       expect(gameItem.isListed).to.be.false;
@@ -148,12 +148,12 @@ describe("Pirates Quest NFT Items", () => {
       const itemName = "Stormbreaker Galleon";
       const itemUri = "https://arweave.net/ship-metadata.json";
       const itemType = { ship: {} };
-      const rarity = 4; // Epic
+      const rarity = 4;
       const stats = {
         attackPower: 200,
         defense: 300,
-        speedBoost: 500, // Fastest ship
-        specialAbility: 2, // Storm immunity
+        speedBoost: 500,
+        specialAbility: 2,
       };
 
       const tx = await program.methods
@@ -181,7 +181,7 @@ describe("Pirates Quest NFT Items", () => {
     it("should mint a cosmetic outfit with no combat stats", async () => {
       const itemName = "Pirate King's Hat";
       const itemUri = "https://arweave.net/hat-metadata.json";
-      const itemType = { outfit: {} };
+      const itemType = { cosmetic: {} }; // ItemType enum
       const rarity = 3; // Rare
       const stats = {
         attackPower: 0,
@@ -237,7 +237,7 @@ describe("Pirates Quest NFT Items", () => {
 
         expect.fail("Should have failed with invalid rarity");
       } catch (error: any) {
-        expect(error.error.errorMessage).to.include("Rarity must be between");
+        expect(error.toString()).to.include("Rarity must be between");
       }
     });
 
@@ -266,7 +266,7 @@ describe("Pirates Quest NFT Items", () => {
 
         expect.fail("Should have failed with invalid rarity");
       } catch (error: any) {
-        expect(error.error.errorMessage).to.include("Rarity must be between");
+        expect(error.toString()).to.include("Rarity must be between");
       }
     });
   });
@@ -359,7 +359,7 @@ describe("Pirates Quest NFT Items", () => {
 
         expect.fail("Should have failed");
       } catch (error: any) {
-        expect(error.error.errorMessage).to.include("legendary");
+        expect(error.toString()).to.include("legendary");
       }
     });
   });

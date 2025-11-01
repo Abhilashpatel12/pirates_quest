@@ -1,9 +1,17 @@
-node_modules/
+# Solana/Anchor
 target/
-.DS_Store
+.anchor/
+test-ledger/
+node_modules/
+
+# Keys & Sensitive
+*.json
 .env
+.env.local
+
+# IDE
 .vscode/
 .idea/
-yarn.lock
-*.log
-dist/
+
+# OS
+.DS_Store

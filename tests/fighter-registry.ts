@@ -45,7 +45,7 @@ describe("fighter_registry", () => {
 
   it("Updates the Fighter", async () => {
     await program.methods
-      .updatefighter(98, 45, 123, 3)
+      .updatefighter(98, 45, 123, 3, new anchor.BN(0))
       .accounts({
         fighter: fighterPda,
         authority: user.publicKey,

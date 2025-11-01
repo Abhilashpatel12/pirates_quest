@@ -8,5 +8,8 @@
     "mocha": "^11.7.4",
     "ts-mocha": "^11.1.0",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@solana/spl-token": "^0.4.14"
   }
 }

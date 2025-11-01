@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Mint, Transfer};
 use mpl_core::{
     ID as MPL_CORE_ID,
     instructions::{CreateCollectionV2CpiBuilder, CreateV2CpiBuilder},
@@ -9,192 +8,190 @@ use crate::state::*;
 use crate::errors::*;
 
 // Initialize a Collection Asset (Metaplex Core collection)
-pub fn initialize_collection(
-    ctx: Context<InitializeCollection>,
-    name: String,
-    uri: String,
-) -> Result<()> {
-    // CPI to Metaplex Core for collection asset
-    CreateCollectionV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
-        .collection(&ctx.accounts.collection_mint.to_account_info())
-        .payer(&ctx.accounts.authority.to_account_info())
-        .system_program(&ctx.accounts.system_program.to_account_info())
-        .name(name.clone())
-        .uri(uri.clone())
-        .invoke()?;
-    
-    let collection = &mut ctx.accounts.collection;
-    collection.authority = ctx.accounts.authority.key();
-    collection.total_minted = 0;
-    collection.name = name;
-    collection.uri = uri;
-    Ok(())
-}
 
-// Mint a core NFT game item (weapon, ship, or outfit)
-pub fn mint_game_item(
-    ctx: Context<MintGameItem>,
-    name: String,
-    uri: String,
-    item_type: ItemType,
-    rarity: u8,
-    base_stats: ItemStats,
-) -> Result<()> {
-    require!(rarity >= 1 && rarity <= 5, GameError::InvalidRarity);
-    require!(base_stats.attack_power >= 0, GameError::StatValueNegative);
-    require!(base_stats.defense >= 0, GameError::StatValueNegative);
-    require!(base_stats.speed_boost >= 0, GameError::StatValueNegative);
-    // CPI to Metaplex Core for NFT asset with plugin attributes
-    CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
-        .asset(&ctx.accounts.asset.to_account_info())
-        .collection(Some(&ctx.accounts.collection_mint.to_account_info()))
-        .payer(&ctx.accounts.payer.to_account_info())
-        .owner(Some(&ctx.accounts.owner.to_account_info()))
-        .system_program(&ctx.accounts.system_program.to_account_info())
-        .name(name.clone())
-        .uri(uri.clone())
-        .plugins(vec![PluginAuthorityPair {
-            plugin: Plugin::Attributes(Attributes {
-                attribute_list: vec![
-                    Attribute { key: "item_type".into(), value: format!("{:?}", item_type) },
-                    Attribute { key: "rarity".into(), value: rarity.to_string() },
-                    Attribute { key: "attack".into(), value: base_stats.attack_power.to_string() },
-                    Attribute { key: "defense".into(), value: base_stats.defense.to_string() },
-                    Attribute { key: "speed".into(), value: base_stats.speed_boost.to_string() },
-                    Attribute { key: "special_ability".into(), value: base_stats.special_ability.to_string() },
-                ]
-            }),
-            authority: None,
-        }])
-        .invoke()?;
+ pub fn initialize_collection(
+        ctx: Context<InitializeCollection>,
+        name: String,
+        uri: String,
+    ) -> 
+Result<()> {
+        CreateCollectionV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
+            .collection(&ctx.accounts.collection_mint.to_account_info())
+            .payer(&ctx.accounts.authority.to_account_info())
+            .system_program(&ctx.accounts.system_program.to_account_info())
+            .name(name.clone())
+            .uri(uri.clone())
+            .invoke()?;
+        
+        let collection = &mut ctx.accounts.collection;
+        collection.authority = ctx.accounts.authority.key();
+        collection.total_minted = 0;
+        collection.name = name;
+        collection.uri = uri;
+        Ok(())
+    }
 
-    let collection = &mut ctx.accounts.collection;
-    let game_item = &mut ctx.accounts.game_item;
-    collection.total_minted += 1;
-    game_item.asset = ctx.accounts.asset.key();
-    game_item.owner = ctx.accounts.owner.key();
-    game_item.item_type = item_type;
-    game_item.rarity = rarity;
-    game_item.stats = base_stats;
-    game_item.level = 1;
-    game_item.experience = 0;
-    game_item.is_equipped = false;
-    game_item.is_listed = false;
-    game_item.boss_proof = None;
-    game_item.treasury_proof = None;
-    game_item.created_at = Clock::get()?.unix_timestamp;
-    Ok(())
-}
+    pub fn mint_game_item(
+        ctx: Context<MintGameItem>,
+        name: String,
+        uri: String,
+        item_type: ItemType,
+        rarity: u8,
+        base_stats: ItemStats,
+    ) -> Result<()> {
+        require!(rarity >= 1 && rarity <= 5, GameError::InvalidRarity);
+        require!(base_stats.attack_power >= 0, GameError::StatValueNegative);
+        require!(base_stats.defense >= 0, GameError::StatValueNegative);
+        require!(base_stats.speed_boost >= 0, GameError::StatValueNegative);
 
-// Mint a boss drop core NFT (requires boss proof logic)
-pub fn mint_boss_drop(
-    ctx: Context<MintBossDrop>,
-    name: String,
-    uri: String,
-    item_type: ItemType,
-    rarity: u8,
-    base_stats: ItemStats,
-    boss_proof: Option<BossProof>,
-) -> Result<()> {
-     require!(rarity == 5, GameError::BossDropNotLegendary);
-    require!(boss_proof.is_some(), GameError::MissingBossProof); // Boss drops are always legendary
-    CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
-        .asset(&ctx.accounts.asset.to_account_info())
-        .collection(Some(&ctx.accounts.collection_mint.to_account_info()))
-        .payer(&ctx.accounts.payer.to_account_info())
-        .owner(Some(&ctx.accounts.owner.to_account_info()))
-        .system_program(&ctx.accounts.system_program.to_account_info())
-        .name(name.clone())
-        .uri(uri.clone())
-        .plugins(vec![PluginAuthorityPair {
-            plugin: Plugin::Attributes(Attributes {
-                attribute_list: vec![
-                    Attribute { key: "item_type".into(), value: format!("{:?}", item_type) },
-                    Attribute { key: "rarity".into(), value: rarity.to_string() },
-                    Attribute { key: "attack".into(), value: base_stats.attack_power.to_string() },
-                    Attribute { key: "defense".into(), value: base_stats.defense.to_string() },
-                    Attribute { key: "speed".into(), value: base_stats.speed_boost.to_string() },
-                    Attribute { key: "special_ability".into(), value: base_stats.special_ability.to_string() },
-                    Attribute { key: "boss".into(), value: boss_proof.as_ref().map_or("".to_string(), |bp| format!("#{} @ {}", bp.boss_id, bp.defeat_timestamp)) },
-                ]
-            }),
-            authority: None,
-        }])
-        .invoke()?;
+        CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
+            .asset(&ctx.accounts.asset.to_account_info())
+            .collection(Some(&ctx.accounts.collection_mint.to_account_info()))
+            .payer(&ctx.accounts.payer.to_account_info())
+            .owner(Some(&ctx.accounts.owner.to_account_info()))
+            .system_program(&ctx.accounts.system_program.to_account_info())
+            .name(name.clone())
+            .uri(uri.clone())
+            .plugins(vec![PluginAuthorityPair {
+                plugin: Plugin::Attributes(Attributes {
+                    attribute_list: vec![
+                        Attribute { key: "item_type".into(), value: format!("{:?}", item_type) },
+                        Attribute { key: "rarity".into(), value: rarity.to_string() },
+                        Attribute { key: "attack".into(), value: base_stats.attack_power.to_string() },
+                        Attribute { key: "defense".into(), value: base_stats.defense.to_string() },
+                        Attribute { key: "speed".into(), value: base_stats.speed_boost.to_string() },
+                        Attribute { key: "special_ability".into(), value: base_stats.special_ability.to_string() },
+                    ]
+                }),
+                authority: None,
+            }])
+            .invoke()?;
 
-    let collection = &mut ctx.accounts.collection;
-    let game_item = &mut ctx.accounts.game_item;
-    collection.total_minted += 1;
-    game_item.asset = ctx.accounts.asset.key();
-    game_item.owner = ctx.accounts.owner.key();
-    game_item.item_type = item_type;
-    game_item.rarity = rarity;
-    game_item.stats = base_stats;
-    game_item.level = 1;
-    game_item.experience = 0;
-    game_item.is_equipped = false;
-    game_item.is_listed = false;
-    game_item.boss_proof = boss_proof;
-    game_item.treasury_proof = None;
-    game_item.created_at = Clock::get()?.unix_timestamp;
-    Ok(())
-}
+        let collection = &mut ctx.accounts.collection;
+        let game_item = &mut ctx.accounts.game_item;
+        collection.total_minted += 1;
+        game_item.asset = ctx.accounts.asset.key();
+        game_item.owner = ctx.accounts.owner.key();
+        game_item.item_type = item_type;
+        game_item.rarity = rarity;
+        game_item.stats = base_stats;
+        game_item.level = 1;
+        game_item.experience = 0;
+        game_item.is_equipped = false;
+        game_item.is_listed = false;
+        game_item.boss_proof = None;
+        game_item.treasury_proof = None;
+        game_item.created_at = Clock::get()?.unix_timestamp;
+        Ok(())
+    }
 
-// Mint a treasury drop core NFT (requires treasury proof logic)
-pub fn mint_treasury_drop(
-    ctx: Context<MintTreasuryDrop>,
-    name: String,
-    uri: String,
-    item_type: ItemType,
-    rarity: u8,
-    base_stats: ItemStats,
-    treasury_proof: Option<TreasuryProof>,
-) -> Result<()> {
-    require!(rarity == 5, GameError::TreasuryDropNotLegendary);
-    require!(treasury_proof.is_some(), GameError::MissingTreasuryProof); // Treasury drops are always legendary
-    CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
-        .asset(&ctx.accounts.asset.to_account_info())
-        .collection(Some(&ctx.accounts.collection_mint.to_account_info()))
-        .payer(&ctx.accounts.payer.to_account_info())
-        .owner(Some(&ctx.accounts.owner.to_account_info()))
-        .system_program(&ctx.accounts.system_program.to_account_info())
-        .name(name.clone())
-        .uri(uri.clone())
-        .plugins(vec![PluginAuthorityPair {
-            plugin: Plugin::Attributes(Attributes {
-                attribute_list: vec![
-                    Attribute { key: "item_type".into(), value: format!("{:?}", item_type) },
-                    Attribute { key: "rarity".into(), value: rarity.to_string() },
-                    Attribute { key: "attack".into(), value: base_stats.attack_power.to_string() },
-                    Attribute { key: "defense".into(), value: base_stats.defense.to_string() },
-                    Attribute { key: "speed".into(), value: base_stats.speed_boost.to_string() },
-                    Attribute { key: "special_ability".into(), value: base_stats.special_ability.to_string() },
-                    Attribute { key: "treasury".into(), value: treasury_proof.as_ref().map_or("".to_string(), |tp| format!("@ {}", tp.claim_timestamp)) },
-                ]
-            }),
-            authority: None,
-        }])
-        .invoke()?;
+    pub fn mint_boss_drop(
+        ctx: Context<MintBossDrop>,
+        name: String,
+        uri: String,
+        item_type: ItemType,
+        rarity: u8,
+        base_stats: ItemStats,
+        boss_proof: Option<BossProof>,
+    ) -> Result<()> {
+        require!(rarity == 5, GameError::BossDropNotLegendary);
+        require!(boss_proof.is_some(), GameError::MissingBossProof);
 
-    let collection = &mut ctx.accounts.collection;
-    let game_item = &mut ctx.accounts.game_item;
-    collection.total_minted += 1;
-    game_item.asset = ctx.accounts.asset.key();
-    game_item.owner = ctx.accounts.owner.key();
-    game_item.item_type = item_type;
-    game_item.rarity = rarity;
-    game_item.stats = base_stats;
-    game_item.level = 1;
-    game_item.experience = 0;
-    game_item.is_equipped = false;
-    game_item.is_listed = false;
-    game_item.boss_proof = None;
-    game_item.treasury_proof = treasury_proof;
-    game_item.created_at = Clock::get()?.unix_timestamp;
-    Ok(())
-}
+        CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
+            .asset(&ctx.accounts.asset.to_account_info())
+            .collection(Some(&ctx.accounts.collection_mint.to_account_info()))
+            .payer(&ctx.accounts.payer.to_account_info())
+            .owner(Some(&ctx.accounts.owner.to_account_info()))
+            .system_program(&ctx.accounts.system_program.to_account_info())
+            .name(name.clone())
+            .uri(uri.clone())
+            .plugins(vec![PluginAuthorityPair {
+                plugin: Plugin::Attributes(Attributes {
+                    attribute_list: vec![
+                        Attribute { key: "item_type".into(), value: format!("{:?}", item_type) },
+                        Attribute { key: "rarity".into(), value: rarity.to_string() },
+                        Attribute { key: "attack".into(), value: base_stats.attack_power.to_string() },
+                        Attribute { key: "defense".into(), value: base_stats.defense.to_string() },
+                        Attribute { key: "speed".into(), value: base_stats.speed_boost.to_string() },
+                        Attribute { key: "special_ability".into(), value: base_stats.special_ability.to_string() },
+                        Attribute { key: "boss".into(), value: boss_proof.as_ref().map_or("".to_string(), |bp| format!("#{} @ {}", bp.boss_id, bp.defeat_timestamp)) },
+                    ]
+                }),
+                authority: None,
+            }])
+            .invoke()?;
 
+        let collection = &mut ctx.accounts.collection;
+        let game_item = &mut ctx.accounts.game_item;
+        collection.total_minted += 1;
+        game_item.asset = ctx.accounts.asset.key();
+        game_item.owner = ctx.accounts.owner.key();
+        game_item.item_type = item_type;
+        game_item.rarity = rarity;
+        game_item.stats = base_stats;
+        game_item.level = 1;
+        game_item.experience = 0;
+        game_item.is_equipped = false;
+        game_item.is_listed = false;
+        game_item.boss_proof = boss_proof;
+        game_item.treasury_proof = None;
+        game_item.created_at = Clock::get()?.unix_timestamp;
+        Ok(())
+    }
 
+    pub fn mint_treasury_drop(
+        ctx:Context<MintTreasuryDrop>,
+        name: String,
+        uri: String,
+        item_type: ItemType,
+        rarity: u8,
+        base_stats: ItemStats,
+        treasury_proof: Option<TreasuryProof>,
+    ) -> Result<()> {
+        require!(rarity == 5, GameError::TreasuryDropNotLegendary);
+        require!(treasury_proof.is_some(), GameError::MissingTreasuryProof);
+
+        CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
+            .asset(&ctx.accounts.asset.to_account_info())
+            .collection(Some(&ctx.accounts.collection_mint.to_account_info()))
+            .payer(&ctx.accounts.payer.to_account_info())
+            .owner(Some(&ctx.accounts.owner.to_account_info()))
+            .system_program(&ctx.accounts.system_program.to_account_info())
+            .name(name.clone())
+            .uri(uri.clone())
+            .plugins(vec![PluginAuthorityPair {
+                plugin: Plugin::Attributes(Attributes {
+                    attribute_list: vec![
+                        Attribute { key: "item_type".into(), value: format!("{:?}", item_type) },
+                        Attribute { key: "rarity".into(), value: rarity.to_string() },
+                        Attribute { key: "attack".into(), value: base_stats.attack_power.to_string() },
+                        Attribute { key: "defense".into(), value: base_stats.defense.to_string() },
+                        Attribute { key: "speed".into(), value: base_stats.speed_boost.to_string() },
+                        Attribute { key: "special_ability".into(), value: base_stats.special_ability.to_string() },
+                        Attribute { key: "treasury".into(), value: treasury_proof.as_ref().map_or("".to_string(), |tp| format!("@ {}", tp.claim_timestamp)) },
+                    ]
+                }),
+                authority: None,
+            }])
+            .invoke()?;
+
+        let collection = &mut ctx.accounts.collection;
+        let game_item = &mut ctx.accounts.game_item;
+        collection.total_minted += 1;
+        game_item.asset = ctx.accounts.asset.key();
+        game_item.owner = ctx.accounts.owner.key();
+        game_item.item_type = item_type;
+        game_item.rarity = rarity;
+        game_item.stats = base_stats;
+        game_item.level = 1;
+        game_item.experience = 0;
+        game_item.is_equipped = false;
+        game_item.is_listed = false;
+        game_item.boss_proof = None;
+        game_item.treasury_proof = treasury_proof;
+        game_item.created_at = Clock::get()?.unix_timestamp;
+        Ok(())
+    }
 
 
 #[derive(Accounts)]
@@ -212,7 +209,7 @@ pub struct InitializeCollection<'info> {
     pub authority: Signer<'info>,
     
     /// CHECK: Collection mint created by Metaplex Core
-    #[account(mut)]
+    #[account(mut, signer)]
     pub collection_mint: UncheckedAccount<'info>,
     
     /// CHECK: Metaplex Core Program
@@ -232,6 +229,7 @@ pub struct MintGameItem<'info> {
     pub collection: Account<'info, Collection>,
     
     /// CHECK: Collection mint
+    #[account(mut)]
     pub collection_mint: UncheckedAccount<'info>,
     
     #[account(
@@ -244,8 +242,8 @@ pub struct MintGameItem<'info> {
     pub game_item: Account<'info, GameItem>,
     
     /// CHECK: Core NFT asset
-    #[account(mut)]
-    pub asset: UncheckedAccount<'info>,
+    #[account(mut, signer)]
+    pub asset: Signer<'info>,
     
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -270,6 +268,7 @@ pub struct MintBossDrop<'info> {
     pub collection: Account<'info, Collection>,
     
     /// CHECK: Collection mint
+    #[account(mut)]
     pub collection_mint: UncheckedAccount<'info>,
     
     #[account(
@@ -282,8 +281,8 @@ pub struct MintBossDrop<'info> {
     pub game_item: Account<'info, GameItem>,
     
     /// CHECK: Asset
-    #[account(mut)]
-    pub asset: UncheckedAccount<'info>,
+    #[account(mut, signer)]
+    pub asset: Signer<'info>,
     
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -309,6 +308,7 @@ pub struct MintTreasuryDrop<'info> {
     pub collection: Account<'info, Collection>,
 
     /// CHECK: Collection mint
+    #[account(mut)]
     pub collection_mint: UncheckedAccount<'info>,
     #[account(
         init,
@@ -319,8 +319,8 @@ pub struct MintTreasuryDrop<'info> {
     )]
     pub game_item: Account<'info, GameItem>,
     /// CHECK: Asset
-    #[account(mut)]
-    pub asset: UncheckedAccount<'info>,
+    #[account(mut, signer)]
+    pub asset: Signer<'info>,
     #[account(mut)]
     pub payer: Signer<'info>,
     /// CHECK: Owner

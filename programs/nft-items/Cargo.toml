@@ -21,9 +21,9 @@ custom-panic = []
 
 
 [dependencies]
-anchor-lang = "0.32.1"
-anchor-spl = { version = "0.32.1", features = ["metadata"] }
-mpl-core = { version = "0.11.1", features = ["anchor"] }
+anchor-lang = "0.30.1"
+anchor-spl = { version = "0.30.1", features = ["metadata"] }
+mpl-core = { version = "0.7.2", features = ["anchor"] }
 
 
 [lints.rust]

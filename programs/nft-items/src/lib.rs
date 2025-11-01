@@ -1,17 +1,17 @@
 use anchor_lang::prelude::*;
 
-pub mod state;
-pub mod errors;
-pub mod instructions;
+mod instructions;
+mod state;
+mod errors;
 
 pub use instructions::*;
 pub use state::*;
 pub use errors::*;
 
-declare_id!("11111111111111111111111111111111");
-
+declare_id!("FtJpYaLCQWvwg2h5AQJ9AuEii5ciHTCkLzzhVSjxmtJC");
 #[program]
-pub mod nft_items {
+
+pub mod nft {
     use super::*;
 
     pub fn initialize_collection(
@@ -46,7 +46,7 @@ pub mod nft_items {
     }
 
     pub fn mint_treasury_drop(
-        ctx:Context<MintTreasuryDrop>,
+        ctx: Context<MintTreasuryDrop>,
         name: String,
         uri: String,
         item_type: ItemType,
